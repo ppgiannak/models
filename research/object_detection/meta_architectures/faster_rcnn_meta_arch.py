@@ -657,6 +657,33 @@ class FasterRCNNMetaArch(model.DetectionModel):
       prediction_dict['mask_predictions'] = mask_predictions
 
     return prediction_dict
+  
+  def extract_detection_features(self, rpn_features_to_crop, detection_boxes_normalized):
+    """Extracts features from the feature map of the final detection boxes
+    
+    Args:
+      rpn_features_to_crop: A 4-D float32 tensor with shape
+        [batch_size, height, width, depth] representing image features to crop
+        using the detection boxes.
+      detection_boxes_normalized: A float32 tensor of shape
+          [batch_size, max_detection, 4] representing detected
+          bounding boxes in normalized coordinates.
+
+    Returns:
+      detection_features: a 4-D float32 tensor representing the
+        features for each detection.
+       
+    """
+    flattened_detection_feature_maps = (
+        self._compute_second_stage_input_feature_maps(
+            rpn_features_to_crop, detection_boxes_normalized))
+    with tf.variable_scope("SecondStageFeatureExtractor", reuse=True) as scope:
+      detection_features = (
+          self._feature_extractor.extract_box_classifier_features(
+              flattened_detection_feature_maps,
+              scope=scope))
+    
+    return detection_features
 
   def _extract_rpn_feature_maps(self, preprocessed_inputs):
     """Extracts RPN features.
